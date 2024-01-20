@@ -22,7 +22,7 @@ def open_image():
         image = image.resize((new_width, new_height), Image.LANCZOS)
 
         image = ImageTk.PhotoImage(image)
-        canvas.create_image(0, 0, anchor="nw", image=image)
+        Imgcanvas.create_image(0, 0, anchor="nw", image=image)
 
 # function for drawing lines on the opened image
 def draw(event):
@@ -30,7 +30,7 @@ def draw(event):
     if file_path:
         x1, y1 = (event.x - pen_size), (event.y - pen_size)
         x2, y2 = (event.x + pen_size), (event.y + pen_size)
-        canvas.create_oval(x1, y1, x2, y2, fill=pen_color, outline="", width=pen_size, tags="oval")
+        Drawcanvas.create_oval(x1, y1, x2, y2, fill=pen_color, outline="", width=pen_size, tags="oval")
 
 # function for changing the pen color
 def change_color():
@@ -41,14 +41,14 @@ def change_color():
 def erase_lines():
     global file_path
     if file_path:
-        canvas.delete("oval")
+        Drawcanvas.delete("oval")
 
 # the function for saving an image
 def save_image():
     global file_path
     if file_path:
         # create a new PIL Image object from the canvas
-        image = ImageGrab.grab(bbox=(canvas.winfo_rootx(), canvas.winfo_rooty(), canvas.winfo_rootx() + canvas.winfo_width(), canvas.winfo_rooty() + canvas.winfo_height()))
+        image = ImageGrab.grab(bbox=(Drawcanvas.winfo_rootx(), Drawcanvas.winfo_rooty(), Drawcanvas.winfo_rootx() + Drawcanvas.winfo_width(), Drawcanvas.winfo_rooty() + Drawcanvas.winfo_height()))
         # open file dialog to select save location and file type
         file_path = filedialog.asksaveasfilename(defaultextension=".jpg")
         if file_path:
@@ -67,10 +67,14 @@ root.iconphoto(False, icon)
 left_frame = ttk.Frame(root, width=200, height=600)
 left_frame.pack(side="left", fill="y")
 
-# the right canvas for displaying the image
-canvas = ttk.Canvas(root, width=WIDTH, height=HEIGHT)
-canvas.pack()
-canvas.bind("<B1-Motion>", draw)
+# the top right canvas for displaying the image
+Imgcanvas = ttk.Canvas(root, width=(WIDTH/2), height=(HEIGHT/2))
+Imgcanvas.pack()
+
+# the bottom right canvas for displaying the drawing
+Drawcanvas = ttk.Canvas(root, width=(WIDTH/2), height=(HEIGHT/2))
+Drawcanvas.pack()
+Drawcanvas.bind("<B1-Motion>", draw)
 
 # loading the icons for the 4 buttons
 image_icon = ttk.PhotoImage(file = 'add.png').subsample(3, 3)
