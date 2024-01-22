@@ -39,7 +39,7 @@ def mouse_drawing(event, x, y, flags, params):
         init = np.array([r, c]).T
         snake = active_contour(gaussian(img, 3, preserve_range=False),
                        init, boundary_condition='fixed',
-                       alpha=0.2, beta=2.0, w_line=-1, w_edge=1, gamma=0.1)
+                       alpha=0.1, beta=20.0, w_line=-1, w_edge=5, gamma=0.1)
 
         fig, ax = plt.subplots(figsize=(7, 7))
         ax.imshow(img, cmap=plt.cm.gray)
@@ -59,7 +59,7 @@ def mouse_drawing(event, x, y, flags, params):
         init = np.array([r, c]).T
 
         snake = active_contour(gaussian(img, 3, preserve_range=False),
-                            init, alpha=0.015, beta=1, gamma=0.001, boundary_condition='fixed')
+                            init, alpha=0.015, beta=20, gamma=0.001)
 
         fig, ax = plt.subplots(figsize=(7, 7))
         ax.imshow(img, cmap=plt.cm.gray)
