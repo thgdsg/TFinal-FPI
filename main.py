@@ -1,9 +1,13 @@
 import ttkbootstrap as ttk
 from tkinter import filedialog
-from tkinter.messagebox import showerror, askyesno
-from tkinter import colorchooser
-from PIL import Image, ImageTk, ImageGrab
+from tkinter.messagebox import askyesno
+from PIL import ImageGrab
 import cv2 as cv
+import numpy as np
+from skimage.filters import gaussian
+from skimage.segmentation import active_contour
+import matplotlib.pyplot as plt
+import skimage as ski
 
 WIDTH = 750
 HEIGHT = 560
@@ -18,7 +22,54 @@ def open_image():
     if file_path:
         global opencvImg
         opencvImg = cv.imread(file_path)
-        cv.imshow("Display window", opencvImg)
+        cv.imshow("Imagem", opencvImg)
+        cv.setMouseCallback("Imagem", mouse_drawing)
+
+def mouse_drawing(event, x, y, flags, params):
+    global r, c, img, x_antigo, y_antigo
+    if event == cv.EVENT_LBUTTONDOWN:
+        img = ski.util.img_as_float(opencvImg)
+        img = img[:, :, ::-1]
+        x_antigo = x
+        y_antigo = y
+
+    if event == cv.EVENT_LBUTTONUP:
+        c = np.linspace(x_antigo, x, 100)
+        r = np.linspace(y_antigo, y, 100)
+        init = np.array([r, c]).T
+        snake = active_contour(gaussian(img, 3, preserve_range=False),
+                       init, boundary_condition='fixed',
+                       alpha=0.2, beta=2.0, w_line=-1, w_edge=1, gamma=0.1)
+
+        fig, ax = plt.subplots(figsize=(7, 7))
+        ax.imshow(img, cmap=plt.cm.gray)
+        ax.plot(init[:, 1], init[:, 0], '--r', lw=3)
+        ax.plot(snake[:, 1], snake[:, 0], '-b', lw=3)
+        ax.set_xticks([]), ax.set_yticks([])
+        ax.axis([0, img.shape[1], img.shape[0], 0])
+
+        plt.show()
+    if event == cv.EVENT_RBUTTONDOWN:
+        img = ski.util.img_as_float(opencvImg)
+        img = img[:, :, ::-1]
+
+        s = np.linspace(0, 2*np.pi, 400)
+        r = y + 20*np.sin(s)
+        c = x + 20*np.cos(s)
+        init = np.array([r, c]).T
+
+        snake = active_contour(gaussian(img, 3, preserve_range=False),
+                            init, alpha=0.015, beta=1, gamma=0.001, boundary_condition='fixed')
+
+        fig, ax = plt.subplots(figsize=(7, 7))
+        ax.imshow(img, cmap=plt.cm.gray)
+        ax.plot(init[:, 1], init[:, 0], '--r', lw=3)
+        ax.plot(snake[:, 1], snake[:, 0], '-b', lw=3)
+        ax.set_xticks([]), ax.set_yticks([])
+        ax.axis([0, img.shape[1], img.shape[0], 0])
+
+        plt.show()
+
 
 # function for drawing lines on the opened image
 def draw(event):
@@ -30,8 +81,7 @@ def draw(event):
 
 # function for changing the pen color
 def change_color():
-    global pen_color
-    pen_color = colorchooser.askcolor(title="Select Pen Color")[1]
+    pass
 
 # function for erasing lines on the opened image
 def erase_lines():
