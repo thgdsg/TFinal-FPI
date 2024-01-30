@@ -1,13 +1,14 @@
 import ttkbootstrap as ttk
 from tkinter import filedialog
 from tkinter.messagebox import askyesno
-from PIL import ImageGrab
+from PIL import ImageGrab, Image
 import cv2 as cv
 import numpy as np
 from skimage.filters import gaussian
 from skimage.segmentation import active_contour
 import matplotlib.pyplot as plt
 import skimage as ski
+import sintese as sint
 
 WIDTH = 750
 HEIGHT = 560
@@ -26,7 +27,7 @@ def open_image():
         cv.setMouseCallback("Imagem", mouse_drawing)
 
 def mouse_drawing(event, x, y, flags, params):
-    global r, c, img, x_antigo, y_antigo
+    global r, c, img, x_antigo, y_antigo, snake
     if event == cv.EVENT_LBUTTONDOWN:
         img = ski.util.img_as_float(opencvImg)
         img = img[:, :, ::-1]
@@ -80,7 +81,11 @@ def draw(event):
         canvas.create_oval(x1, y1, x2, y2, fill=pen_color, outline="", width=pen_size, tags="oval")
 
 # function for changing the pen color
-def change_color():
+def sintetiza_textura():
+    imagem = Image.fromarray(opencvImg)
+    tamanho_bloco = int(imagem.width / 8)
+    novatextura = sint.quilt(imagem,tamanho_bloco,8,"Cut")
+    novatextura.show()
     pass
 
 # function for erasing lines on the opened image
@@ -120,7 +125,7 @@ canvas.bind("<B1-Motion>", draw)
 
 # loading the icons for the 4 buttons
 image_icon = ttk.PhotoImage(file = 'add.png').subsample(3, 3)
-color_icon = ttk.PhotoImage(file = 'color.png').subsample(3, 3)
+color_icon = ttk.PhotoImage(file = 'faztextura.png').subsample(3, 3)
 erase_icon = ttk.PhotoImage(file = 'erase.png').subsample(3, 3)
 save_icon = ttk.PhotoImage(file = 'saved.png').subsample(3, 3)
 
@@ -128,7 +133,7 @@ save_icon = ttk.PhotoImage(file = 'saved.png').subsample(3, 3)
 image_button = ttk.Button(left_frame, image=image_icon, bootstyle="light", command=open_image)
 image_button.pack(pady=5)
 # button for choosing pen color
-color_button = ttk.Button(left_frame, image=color_icon, bootstyle="light", command=change_color)
+color_button = ttk.Button(left_frame, image=color_icon, bootstyle="light", command=sintetiza_textura)
 color_button.pack(pady=5)
 # button for erasing the lines drawn over the image file
 erase_button = ttk.Button(left_frame, image=erase_icon, bootstyle="light", command=erase_lines)
