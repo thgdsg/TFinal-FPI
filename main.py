@@ -1,7 +1,8 @@
+import math
 import ttkbootstrap as ttk
-from tkinter import filedialog
+from tkinter import Label, filedialog
 from tkinter.messagebox import askyesno
-from PIL import ImageGrab, Image
+from PIL import ImageGrab, Image, ImageTk
 import cv2 as cv
 import numpy as np
 from skimage.filters import gaussian
@@ -15,6 +16,9 @@ HEIGHT = 560
 file_path = ""
 pen_size = 3
 pen_color = "black"
+h = 10
+samples = 100
+crop_img = np.zeros((h*2,(h*2)+samples, 3),  dtype = "uint8")
 
 # function to open the image file
 def open_image():
@@ -35,8 +39,8 @@ def mouse_drawing(event, x, y, flags, params):
         y_antigo = y
 
     if event == cv.EVENT_LBUTTONUP:
-        c = np.linspace(x_antigo, x, 100)
-        r = np.linspace(y_antigo, y, 100)
+        c = np.linspace(x_antigo, x, samples)
+        r = np.linspace(y_antigo, y, samples)
         init = np.array([r, c]).T
         snake = active_contour(gaussian(img, 3, preserve_range=False),
                        init, boundary_condition='fixed',
@@ -48,7 +52,24 @@ def mouse_drawing(event, x, y, flags, params):
         ax.plot(snake[:, 1], snake[:, 0], '-b', lw=3)
         ax.set_xticks([]), ax.set_yticks([])
         ax.axis([0, img.shape[1], img.shape[0], 0])
-
+        
+        for p in range(len(snake)-4):
+            y = int(snake[p][0])
+            x = int(snake[p][1])
+            radians = math.atan2((y-snake[p+4][0]), (x-snake[p+4][1]))
+            degrees = math.degrees(radians)
+            sample = opencvImg[y-h:y+h, x-h:x+h]
+            image_center = tuple(np.array(sample.shape[1::-1]) / 2)
+            rot_mat = cv.getRotationMatrix2D(image_center, degrees, 1.0)
+            result = cv.warpAffine(sample, rot_mat, sample.shape[1::-1], flags=cv.INTER_LINEAR)
+            for i in range(2*h):
+                for j in range(int(3*h/4)):
+                    if np.any(result[i][j]>20):
+                        crop_img[i, j+p] = result[i][int(h/4)+j]
+         
+        (height, width) = crop_img.shape[:2]
+        cv.imshow("cropped", cv.resize(crop_img, (width*2,height*2)))
+        
         plt.show()
     if event == cv.EVENT_RBUTTONDOWN:
         img = ski.util.img_as_float(opencvImg)
@@ -78,6 +99,7 @@ def draw(event):
     if file_path:
         x1, y1 = (event.x - pen_size), (event.y - pen_size)
         x2, y2 = (event.x + pen_size), (event.y + pen_size)
+        
         canvas.create_oval(x1, y1, x2, y2, fill=pen_color, outline="", width=pen_size, tags="oval")
 
 # function for changing the pen color
