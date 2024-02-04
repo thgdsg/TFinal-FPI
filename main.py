@@ -1,8 +1,8 @@
+import math
 import ttkbootstrap as ttk
-import tkinter as tk
 from tkinter import filedialog
 from tkinter.messagebox import askyesno
-from PIL import ImageGrab, Image, ImageTk
+from PIL import ImageGrab, Image
 import cv2 as cv
 import numpy as np
 from skimage.filters import gaussian
@@ -19,6 +19,9 @@ pen_color = "black"
 roi_selected = False
 start_x, start_y, end_x, end_y = -1, -1, -1, -1
 count = 0
+h = 15
+samples = 100
+crop_img = np.zeros((h*2-10,(h*2)+samples*2, 3),  dtype = "uint8")
 
 # function to open the image file
 def open_image():
@@ -32,8 +35,8 @@ def open_image():
 
 def mouse_drawing(event, x, y, flags, params):
     global roi_selected, start_x, start_y, end_x, end_y
-    global r, c, img, x_antigo, y_antigo, snake
-    
+    global r, c, img, x_antigo, y_antigo, snake, roi
+
     if event == cv.EVENT_LBUTTONDOWN:
         img = ski.util.img_as_float(opencvImg)
         img = img[:, :, ::-1]
@@ -41,21 +44,32 @@ def mouse_drawing(event, x, y, flags, params):
         y_antigo = y
 
     if event == cv.EVENT_LBUTTONUP:
-        c = np.linspace(x_antigo, x, 100)
-        r = np.linspace(y_antigo, y, 100)
+        c = np.linspace(x_antigo, x, samples)
+        r = np.linspace(y_antigo, y, samples)
         init = np.array([r, c]).T
         snake = active_contour(gaussian(img, 3, preserve_range=False),
                        init, boundary_condition='fixed',
                        alpha=0.1, beta=20.0, w_line=-1, w_edge=5, gamma=0.1)
-
-        fig, ax = plt.subplots(figsize=(7, 7))
-        ax.imshow(img, cmap=plt.cm.gray)
-        ax.plot(init[:, 1], init[:, 0], '--r', lw=3)
-        ax.plot(snake[:, 1], snake[:, 0], '-b', lw=3)
-        ax.set_xticks([]), ax.set_yticks([])
-        ax.axis([0, img.shape[1], img.shape[0], 0])
-
-        plt.show()
+        
+        for p in range(len(snake)-5):
+            y = int(snake[p][0])
+            x = int(snake[p][1])
+            radians = math.atan2((y-snake[p+5][0]), (x-snake[p+5][1]))
+            degrees = math.degrees(radians)
+            sample = opencvImg[y-h:y+h, x-h:x+h]
+            image_center = tuple(np.array(sample.shape[1::-1]) / 2)
+            rot_mat = cv.getRotationMatrix2D(image_center, degrees, 1.0)
+            result = cv.warpAffine(sample, rot_mat, sample.shape[1::-1], flags=cv.INTER_LINEAR)
+            for i in range(2*h-10):
+                for j in range(int(3*h/4)):
+                    if np.any(result[i][j]>20):
+                        crop_img[i, j+p*2] = result[i+5][int(h/4)+j]
+         
+        (height, width) = crop_img.shape[:2]
+        cv.imshow("cropped", cv.resize(crop_img, (width*4,height*4)))
+        imagemRGB = crop_img[0:2*h, 0+2*h:4*h, ::-1]
+        imagem = Image.fromarray(imagemRGB)
+        imagem.save("textura.png")
 
     if event == cv.EVENT_RBUTTONDOWN:
         start_x, start_y = x, y
@@ -78,7 +92,6 @@ def mouse_drawing(event, x, y, flags, params):
             end_y = start_y + side_length
 
         # Extrai a região de interesse (ROI) e exibe
-        global roi
         roi = opencvImg[start_y:end_y, start_x:end_x]
         cv.imshow("ROI", roi)
     '''if event == cv.EVENT_RBUTTONDOWN:
@@ -140,7 +153,7 @@ def save_image():
                 image.save(file_path)
 
 root = ttk.Window(themename="cosmo")
-root.title("Image Editor")
+root.title("Desenha Textura")
 root.geometry("510x580+300+110")
 root.resizable(0, 0)
 icon = ttk.PhotoImage(file='icon.png')
@@ -182,7 +195,7 @@ erase_button.pack(pady=5)
 save_button = ttk.Button(left_frame, image=save_icon, bootstyle="light", command=save_image)
 save_button.pack(pady=5)
 
-botao_atualizar = ttk.Button(left_frame, text="Atualizar Imagem", bootstyle="light", command=atualizar_imagem)
+botao_atualizar = ttk.Button(left_frame, text="Update Texture", bootstyle="light", command=atualizar_imagem)
 botao_atualizar.pack(pady=5)
 
 # label da textura
