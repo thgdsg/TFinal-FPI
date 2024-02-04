@@ -75,11 +75,11 @@ def mouse_drawing(event, x, y, flags, params):
          
         (height, width) = crop_img.shape[:2]
         cv.imshow("cropped", cv.resize(crop_img, (width*4,height*4)))
-        imagemRGB = crop_img[0:2*h, 0+int(sample/2):2*h+int(sample/2), ::-1]
+        plt.show()
+        imagemRGB = crop_img[0:2*h, 0+2*h:4*h, ::-1]
         imagem = Image.fromarray(imagemRGB)
         imagem.save("textura.png")
         atualizar_imagem()
-        plt.show()
 
     if event == cv.EVENT_RBUTTONDOWN:
         start_x, start_y = x, y
