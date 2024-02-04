@@ -10,12 +10,16 @@ from skimage.segmentation import active_contour
 import matplotlib.pyplot as plt
 import skimage as ski
 import sintese as sint
+import math
 
 WIDTH = 750
 HEIGHT = 560
 file_path = ""
 pen_size = 3
 pen_color = "black"
+h = 30
+samples = 100
+crop_img = np.zeros((h*2-10,(h*2)+samples*2, 3),  dtype = "uint8")
 roi_selected = False
 start_x, start_y, end_x, end_y = -1, -1, -1, -1
 count = 0
@@ -70,6 +74,35 @@ def mouse_drawing(event, x, y, flags, params):
         imagemRGB = crop_img[0:2*h, 0+2*h:4*h, ::-1]
         imagem = Image.fromarray(imagemRGB)
         imagem.save("textura.png")
+
+        fig, ax = plt.subplots(figsize=(7, 7))
+        ax.imshow(img, cmap=plt.cm.gray)
+        ax.plot(init[:, 1], init[:, 0], '--r', lw=3)
+        ax.plot(snake[:, 1], snake[:, 0], '-b', lw=3)
+        ax.set_xticks([]), ax.set_yticks([])
+        ax.axis([0, img.shape[1], img.shape[0], 0])
+        
+        for p in range(len(snake)-5):
+            y = int(snake[p][0])
+            x = int(snake[p][1])
+            radians = math.atan2((y-snake[p+5][0]), (x-snake[p+5][1]))
+            degrees = math.degrees(radians)
+            sample = opencvImg[y-h:y+h, x-h:x+h]
+            image_center = tuple(np.array(sample.shape[1::-1]) / 2)
+            rot_mat = cv.getRotationMatrix2D(image_center, degrees, 1.0)
+            result = cv.warpAffine(sample, rot_mat, sample.shape[1::-1], flags=cv.INTER_LINEAR)
+            for i in range(2*h-10):
+                for j in range(int(3*h/4)):
+                    if np.any(result[i][j]>20):
+                        crop_img[i, j+p*2] = result[i+5][int(h/4)+j]
+         
+        (height, width) = crop_img.shape[:2]
+        cv.imshow("cropped", cv.resize(crop_img, (width*4,height*4)))
+        plt.show()
+        imagemRGB = crop_img[0:2*h, 0+2*h:4*h, ::-1]
+        imagem = Image.fromarray(imagemRGB)
+        imagem.save("textura.png")
+        atualizar_imagem()
 
     if event == cv.EVENT_RBUTTONDOWN:
         start_x, start_y = x, y
@@ -132,8 +165,22 @@ def sintetiza_textura():
 def draw(event):
     global desenha_textura
     if desenha_textura:
+        global count
+        
+        '''
+        imagemRGB = crop_img[0:2*h, 0+count:2*h+count, ::-1]
+        imagem = Image.fromarray(imagemRGB)
+        imagem.save("textura.png")
+        atualizar_imagem()
+        '''
+        
         x, y = event.x, event.y
-        canvas.create_image(x, y, image=label_textura.image, tags='img', anchor='center')
+        canvas.create_image(x, y, image=label_textura.image , tags='img', anchor='center')
+        
+        if (count<samples):
+            count+=1
+        else:
+            count = 0
 
 # function for erasing lines on the opened image
 def erase_lines():
