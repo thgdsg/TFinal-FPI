@@ -1,7 +1,8 @@
 import ttkbootstrap as ttk
+import tkinter as tk
 from tkinter import filedialog
 from tkinter.messagebox import askyesno
-from PIL import ImageGrab, Image
+from PIL import ImageGrab, Image, ImageTk
 import cv2 as cv
 import numpy as np
 from skimage.filters import gaussian
@@ -15,6 +16,9 @@ HEIGHT = 560
 file_path = ""
 pen_size = 3
 pen_color = "black"
+roi_selected = False
+start_x, start_y, end_x, end_y = -1, -1, -1, -1
+count = 0
 
 # function to open the image file
 def open_image():
@@ -27,7 +31,9 @@ def open_image():
         cv.setMouseCallback("Imagem", mouse_drawing)
 
 def mouse_drawing(event, x, y, flags, params):
+    global roi_selected, start_x, start_y, end_x, end_y
     global r, c, img, x_antigo, y_antigo, snake
+    
     if event == cv.EVENT_LBUTTONDOWN:
         img = ski.util.img_as_float(opencvImg)
         img = img[:, :, ::-1]
@@ -50,17 +56,43 @@ def mouse_drawing(event, x, y, flags, params):
         ax.axis([0, img.shape[1], img.shape[0], 0])
 
         plt.show()
+
     if event == cv.EVENT_RBUTTONDOWN:
+        start_x, start_y = x, y
+        roi_selected = True
+
+    if event == cv.EVENT_RBUTTONUP:
+        end_x, end_y = x, y
+        roi_selected = False
+
+        # Garante que a seleção seja quadrada
+        side_length = min(abs(end_x - start_x), abs(end_y - start_y))
+        if end_x < start_x:
+            end_x = start_x - side_length
+        else:
+            end_x = start_x + side_length
+
+        if end_y < start_y:
+            end_y = start_y - side_length
+        else:
+            end_y = start_y + side_length
+
+        # Extrai a região de interesse (ROI) e exibe
+        global roi
+        roi = opencvImg[start_y:end_y, start_x:end_x]
+        cv.imshow("ROI", roi)
+    '''if event == cv.EVENT_RBUTTONDOWN:
         img = ski.util.img_as_float(opencvImg)
         img = img[:, :, ::-1]
 
         s = np.linspace(0, 2*np.pi, 400)
-        r = y + 20*np.sin(s)
-        c = x + 20*np.cos(s)
+        r = y + 10*np.sin(s)
+        c = x + 10*np.cos(s)
         init = np.array([r, c]).T
 
-        snake = active_contour(gaussian(img, 3, preserve_range=False),
-                            init, alpha=0.015, beta=20, gamma=0.001)
+        #snake = active_contour(gaussian(img, 3, preserve_range=False),
+                            #init, alpha=0.01, beta=50, gamma=0.001, boundary_condition='fixed')
+        snake = np.round(np.array(init)).astype(int)
 
         fig, ax = plt.subplots(figsize=(7, 7))
         ax.imshow(img, cmap=plt.cm.gray)
@@ -69,30 +101,30 @@ def mouse_drawing(event, x, y, flags, params):
         ax.set_xticks([]), ax.set_yticks([])
         ax.axis([0, img.shape[1], img.shape[0], 0])
 
-        plt.show()
+        plt.show()'''
+
+# function for changing the pen color
+def sintetiza_textura():
+    global novatextura, label_textura
+    imagemRGB = roi[:, :, ::-1]
+    imagem = Image.fromarray(imagemRGB)
+    tamanho_bloco = int(imagem.width / 4)
+    novatextura = sint.quilt(imagem,tamanho_bloco,4,"Cut")
+    novatextura.show()
+    novatextura.resize((20,20), Image.Resampling.BILINEAR)
+    novatextura.save("textura.png")
 
 
 # function for drawing lines on the opened image
 def draw(event):
-    global file_path
-    if file_path:
-        x1, y1 = (event.x - pen_size), (event.y - pen_size)
-        x2, y2 = (event.x + pen_size), (event.y + pen_size)
-        canvas.create_oval(x1, y1, x2, y2, fill=pen_color, outline="", width=pen_size, tags="oval")
-
-# function for changing the pen color
-def sintetiza_textura():
-    imagem = Image.fromarray(opencvImg)
-    tamanho_bloco = int(imagem.width / 8)
-    novatextura = sint.quilt(imagem,tamanho_bloco,8,"Cut")
-    novatextura.show()
-    pass
+    global desenha_textura
+    if desenha_textura:
+        x, y = event.x, event.y
+        canvas.create_image(x, y, image=label_textura.image, tags='img', anchor='center')
 
 # function for erasing lines on the opened image
 def erase_lines():
-    global file_path
-    if file_path:
-        canvas.delete("oval")
+    canvas.delete("img")
 
 # the function for saving an image
 def save_image():
@@ -124,10 +156,18 @@ canvas.pack()
 canvas.bind("<B1-Motion>", draw)
 
 # loading the icons for the 4 buttons
+desenha_textura = ttk.PhotoImage(file="textura.png").subsample(3,3)
 image_icon = ttk.PhotoImage(file = 'add.png').subsample(3, 3)
 color_icon = ttk.PhotoImage(file = 'faztextura.png').subsample(3, 3)
 erase_icon = ttk.PhotoImage(file = 'erase.png').subsample(3, 3)
 save_icon = ttk.PhotoImage(file = 'saved.png').subsample(3, 3)
+
+def atualizar_imagem():
+    # Atualize a imagem conforme necessário
+    # Neste exemplo, estamos apenas substituindo a imagem por uma nova
+    img_textura = ttk.PhotoImage(file="textura.png").subsample(3,3)
+    label_textura.config(image=img_textura)
+    label_textura.image = img_textura
 
 # button for adding/opening the image file
 image_button = ttk.Button(left_frame, image=image_icon, bootstyle="light", command=open_image)
@@ -141,5 +181,13 @@ erase_button.pack(pady=5)
 # button for saving the image file
 save_button = ttk.Button(left_frame, image=save_icon, bootstyle="light", command=save_image)
 save_button.pack(pady=5)
+
+botao_atualizar = ttk.Button(left_frame, text="Atualizar Imagem", bootstyle="light", command=atualizar_imagem)
+botao_atualizar.pack(pady=5)
+
+# label da textura
+label_textura = ttk.Label(left_frame, image=desenha_textura)
+label_textura.image = desenha_textura
+label_textura.pack(pady=5)
 
 root.mainloop()
