@@ -16,9 +16,9 @@ HEIGHT = 560
 file_path = ""
 pen_size = 3
 pen_color = "black"
-h = 10
+h = 15
 samples = 100
-crop_img = np.zeros((h*2,(h*2)+samples, 3),  dtype = "uint8")
+crop_img = np.zeros((h*2-10,(h*2)+samples*2, 3),  dtype = "uint8")
 
 # function to open the image file
 def open_image():
@@ -53,22 +53,22 @@ def mouse_drawing(event, x, y, flags, params):
         ax.set_xticks([]), ax.set_yticks([])
         ax.axis([0, img.shape[1], img.shape[0], 0])
         
-        for p in range(len(snake)-4):
+        for p in range(len(snake)-5):
             y = int(snake[p][0])
             x = int(snake[p][1])
-            radians = math.atan2((y-snake[p+4][0]), (x-snake[p+4][1]))
+            radians = math.atan2((y-snake[p+5][0]), (x-snake[p+5][1]))
             degrees = math.degrees(radians)
             sample = opencvImg[y-h:y+h, x-h:x+h]
             image_center = tuple(np.array(sample.shape[1::-1]) / 2)
             rot_mat = cv.getRotationMatrix2D(image_center, degrees, 1.0)
             result = cv.warpAffine(sample, rot_mat, sample.shape[1::-1], flags=cv.INTER_LINEAR)
-            for i in range(2*h):
+            for i in range(2*h-10):
                 for j in range(int(3*h/4)):
                     if np.any(result[i][j]>20):
-                        crop_img[i, j+p] = result[i][int(h/4)+j]
+                        crop_img[i, j+p*2] = result[i+5][int(h/4)+j]
          
         (height, width) = crop_img.shape[:2]
-        cv.imshow("cropped", cv.resize(crop_img, (width*2,height*2)))
+        cv.imshow("cropped", cv.resize(crop_img, (width*4,height*4)))
         
         plt.show()
     if event == cv.EVENT_RBUTTONDOWN:
